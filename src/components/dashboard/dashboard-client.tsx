@@ -29,6 +29,9 @@ export function DashboardClient({ stocks, goals, profile, children: childProfile
   const [ilsRate, setIlsRate] = useState<number | null>(null)
   const [livePrices, setLivePrices] = useState<Record<string, number>>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => { setIsMounted(true) }, [])
   const [showInvite, setShowInvite] = useState(false)
   const router = useRouter()
 
@@ -92,6 +95,10 @@ export function DashboardClient({ stocks, goals, profile, children: childProfile
 
   function handleSelectChild(childId: string) {
     router.push(`/dashboard?child=${childId}`)
+  }
+
+  if (!isMounted) {
+    return <LoadingScreen />
   }
 
   return (

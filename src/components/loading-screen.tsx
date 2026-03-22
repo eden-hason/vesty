@@ -35,49 +35,51 @@ export function LoadingScreen() {
         </motion.div>
       ))}
 
-      <motion.div
-        className="relative z-10 flex flex-col items-center gap-4"
-        initial={{ opacity: 0, scale: 0.85 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-      >
+      <div className="relative z-10 flex flex-col items-center gap-4">
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
+          className="text-[80px] leading-none"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1, y: [0, -12, 0] }}
+          transition={{
+            scale: { duration: 0.5, ease: 'backOut' },
+            opacity: { duration: 0.3 },
+            y: { duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.5 },
+          }}
         >
-          <motion.div
-            className="text-[80px] leading-none"
-            animate={{ y: [0, -12, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            🚀
-          </motion.div>
+          🚀
         </motion.div>
 
         <motion.h1
           className="text-[72px] font-black leading-none tracking-tight text-white"
           style={{ textShadow: '0 0 40px rgba(255,255,255,0.3)' }}
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2, ease: 'easeOut' }}
+          transition={{ duration: 0.6, ease: 'easeOut', delay: 0.2 }}
         >
           VESTY
         </motion.h1>
 
-        <p className="text-white/80 text-lg font-medium">צפו בכסף שלכם גדל</p>
+        <motion.p
+          className="text-white/80 text-lg font-medium"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut', delay: 0.35 }}
+        >
+          צפו בכסף שלכם גדל
+        </motion.p>
 
         <div className="flex gap-1.5 mt-2">
           {[0, 1, 2].map((i) => (
             <motion.span
               key={i}
               className="w-2 h-2 rounded-full bg-white/60"
+              initial={{ opacity: 0 }}
               animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.4, ease: 'easeInOut' }}
+              transition={{ duration: 1.2, repeat: Infinity, delay: 0.5 + i * 0.4, ease: 'easeInOut' }}
             />
           ))}
         </div>
-      </motion.div>
+      </div>
     </div>
   )
 }
