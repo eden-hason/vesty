@@ -44,6 +44,24 @@ export async function addGoal(data: {
 export async function deleteGoal(id: string) {
   const { supabase, user } = await getAuthedUser()
 
+  const { data: goal } = await supabase
+    .from('investment_goals')
+    .select('user_id')
+    .eq('id', id)
+    .single()
+
+  if (!goal) throw new Error('Goal not found')
+
+  if (goal.user_id !== user.id) {
+    const { data: child } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', goal.user_id)
+      .eq('parent_id', user.id)
+      .single()
+    if (!child) throw new Error('Unauthorized')
+  }
+
   const { error } = await supabase
     .from('investment_goals')
     .delete()
