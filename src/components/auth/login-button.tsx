@@ -1,10 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 
 export function LoginButton() {
+  const [loading, setLoading] = useState(false)
+
   async function handleLogin() {
+    setLoading(true)
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -15,7 +19,7 @@ export function LoginButton() {
   }
 
   return (
-    <Button onClick={handleLogin} size="lg" className="w-full gap-3">
+    <Button onClick={handleLogin} disabled={loading} size="lg" className="w-full gap-3 cursor-pointer">
       <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
         <path
           fill="currentColor"

@@ -34,7 +34,7 @@ export function StockList({ stocks, ilsRate, isParentMode, childId }: StockListP
     <div className="mt-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-white flex items-center gap-2">
-          📊 כספת המניות שלי
+          📊 המניות שלי
         </h2>
         <AnimatePresence>
           {isParentMode && (

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -65,8 +66,8 @@ export async function GET(request: Request) {
     })
   }
 
-  // Mark invitation as accepted
-  await supabase
+  // Mark invitation as accepted (admin client bypasses RLS — child user can't update parent-owned rows)
+  await createAdminClient()
     .from('invitations')
     .update({ status: 'accepted' })
     .eq('token', token)
