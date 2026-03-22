@@ -87,7 +87,7 @@ export function DashboardClient({ stocks, goals, profile, children: childProfile
 
   const stocksWithLivePrices = stocks.map(s => ({
     ...s,
-    current_price: livePrices[s.ticker] ?? s.current_price,
+    current_price: livePrices[s.ticker] ?? null,
   }))
 
   const totalValueUSD = stocksWithLivePrices.reduce(
