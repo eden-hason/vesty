@@ -31,9 +31,10 @@ const COLOR_OPTIONS = [
 interface AddGoalDialogProps {
   open: boolean
   onClose: () => void
+  childId?: string
 }
 
-export function AddGoalDialog({ open, onClose }: AddGoalDialogProps) {
+export function AddGoalDialog({ open, onClose, childId }: AddGoalDialogProps) {
   const [form, setForm] = useState({ name: '', target_amount: '', icon: '🎯', color: 'purple' })
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
@@ -56,6 +57,7 @@ export function AddGoalDialog({ open, onClose }: AddGoalDialogProps) {
         target_amount: parseFloat(form.target_amount),
         icon: form.icon,
         color: form.color,
+        childId,
       })
       router.refresh()
       handleClose()

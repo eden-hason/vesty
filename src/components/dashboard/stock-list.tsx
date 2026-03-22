@@ -14,9 +14,10 @@ interface StockListProps {
   stocks: Stock[]
   ilsRate: number | null
   isParentMode: boolean
+  childId?: string
 }
 
-export function StockList({ stocks, ilsRate, isParentMode }: StockListProps) {
+export function StockList({ stocks, ilsRate, isParentMode, childId }: StockListProps) {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [, startTransition] = useTransition()
   const router = useRouter()
@@ -95,6 +96,7 @@ export function StockList({ stocks, ilsRate, isParentMode }: StockListProps) {
       <AddStockDialog
         open={showAddDialog}
         onClose={() => setShowAddDialog(false)}
+        childId={childId}
       />
     </div>
   )

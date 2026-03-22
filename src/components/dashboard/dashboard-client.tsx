@@ -1,28 +1,36 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Rocket } from 'lucide-react'
+import { Rocket, UserPlus } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { PortfolioSummary } from './portfolio-summary'
 import { StockList } from './stock-list'
-import { ModeToggle } from './mode-toggle'
+import { ChildrenSelector } from './children-selector'
+import { InviteChildDialog } from './invite-child-dialog'
 import { GoalsSection } from '@/components/goals/goals-section'
 import { LoadingScreen } from '@/components/loading-screen'
 import { LOADING_START_KEY } from '@/app/dashboard/loading'
-import type { Stock, InvestmentGoal } from '@/lib/types'
+import type { Stock, InvestmentGoal, Profile } from '@/lib/types'
 
 const MIN_LOADING_MS = 3000
 
 interface DashboardClientProps {
   stocks: Stock[]
   goals: InvestmentGoal[]
+  profile: Profile
+  children: Profile[]
+  selectedChildId: string | null
 }
 
-export function DashboardClient({ stocks, goals }: DashboardClientProps) {
-  const [isParentMode, setIsParentMode] = useState(false)
+export function DashboardClient({ stocks, goals, profile, children: childProfiles, selectedChildId }: DashboardClientProps) {
+  const isParentMode = profile.role === 'parent'
   const [ilsRate, setIlsRate] = useState<number | null>(null)
   const [livePrices, setLivePrices] = useState<Record<string, number>>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [showInvite, setShowInvite] = useState(false)
+  const router = useRouter()
 
   const rateLoadedRef = useRef(false)
   const pricesLoadedRef = useRef(false)
@@ -82,6 +90,10 @@ export function DashboardClient({ stocks, goals }: DashboardClientProps) {
   )
   const portfolioValueILS = ilsRate ? totalValueUSD * ilsRate : 0
 
+  function handleSelectChild(childId: string) {
+    router.push(`/dashboard?child=${childId}`)
+  }
+
   return (
     <>
       <AnimatePresence>
@@ -109,32 +121,75 @@ export function DashboardClient({ stocks, goals }: DashboardClientProps) {
                 VESTY
               </h1>
             </div>
-            <p className="text-purple-300/70 text-sm">צפו בכסף שלכם גדל</p>
+            <p className="text-purple-300/70 text-sm">
+              {isParentMode ? 'ניהול תיקי ההשקעות של הילדים' : 'צפו בכסף שלכם גדל'}
+            </p>
           </motion.div>
 
-          {/* Mode toggle */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex justify-center mb-8"
-          >
-            <ModeToggle isParentMode={isParentMode} onModeChange={setIsParentMode} />
-          </motion.div>
+          {/* Parent: children selector */}
+          {isParentMode && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-8"
+            >
+              {childProfiles.length > 0 ? (
+                <ChildrenSelector
+                  children={childProfiles}
+                  selectedChildId={selectedChildId}
+                  onSelectChild={handleSelectChild}
+                />
+              ) : (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-16 bg-white/5 rounded-2xl border border-dashed border-purple-500/30"
+                >
+                  <div className="text-6xl mb-4">👨‍👧‍👦</div>
+                  <h3 className="text-white font-bold text-xl mb-2">ברוכים הבאים!</h3>
+                  <p className="text-purple-300/70 mb-6">
+                    הזמן את הילדים שלך כדי להתחיל לנהל את תיקי ההשקעות שלהם
+                  </p>
+                  <Button
+                    onClick={() => setShowInvite(true)}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl"
+                  >
+                    <UserPlus className="w-4 h-4 ms-2" />
+                    הזמן ילד/ה
+                  </Button>
+                </motion.div>
+              )}
+            </motion.div>
+          )}
 
-          {/* Portfolio summary */}
-          <PortfolioSummary stocks={stocksWithLivePrices} ilsRate={ilsRate} />
+          {/* Show portfolio content when there's a selected child or when user is a child */}
+          {(selectedChildId || !isParentMode) && (
+            <>
+              {/* Portfolio summary */}
+              <PortfolioSummary stocks={stocksWithLivePrices} ilsRate={ilsRate} />
 
-          {/* Stock list */}
-          <StockList stocks={stocksWithLivePrices} ilsRate={ilsRate} isParentMode={isParentMode} />
+              {/* Stock list */}
+              <StockList
+                stocks={stocksWithLivePrices}
+                ilsRate={ilsRate}
+                isParentMode={isParentMode}
+                childId={selectedChildId ?? undefined}
+              />
 
-          {/* Investment goals */}
-          <GoalsSection
-            goals={goals}
-            portfolioValueILS={portfolioValueILS}
-          />
+              {/* Investment goals */}
+              <GoalsSection
+                goals={goals}
+                portfolioValueILS={portfolioValueILS}
+                isParentMode={isParentMode}
+                childId={selectedChildId ?? undefined}
+              />
+            </>
+          )}
         </div>
       </div>
+
+      <InviteChildDialog open={showInvite} onClose={() => setShowInvite(false)} />
     </>
   )
 }
