@@ -30,9 +30,11 @@ const PROGRESS_COLORS: Record<string, string> = {
 interface GoalsSectionProps {
   goals: InvestmentGoal[]
   portfolioValueILS: number
+  isParentMode?: boolean
+  childId?: string
 }
 
-export function GoalsSection({ goals, portfolioValueILS }: GoalsSectionProps) {
+export function GoalsSection({ goals, portfolioValueILS, isParentMode = true, childId }: GoalsSectionProps) {
   const [showAdd, setShowAdd] = useState(false)
   const [, startTransition] = useTransition()
   const router = useRouter()
@@ -60,13 +62,15 @@ export function GoalsSection({ goals, portfolioValueILS }: GoalsSectionProps) {
           <Target className="w-5 h-5 text-cyan-400" />
           המטרות שלי
         </h2>
-        <Button
-          onClick={() => setShowAdd(true)}
-          className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-xl shadow-lg shadow-cyan-500/30"
-        >
-          <Plus className="w-4 h-4 ms-2" />
-          מטרה חדשה
-        </Button>
+        {isParentMode && (
+          <Button
+            onClick={() => setShowAdd(true)}
+            className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white rounded-xl shadow-lg shadow-cyan-500/30"
+          >
+            <Plus className="w-4 h-4 ms-2" />
+            מטרה חדשה
+          </Button>
+        )}
       </div>
 
       {goals.length === 0 ? (
@@ -77,14 +81,18 @@ export function GoalsSection({ goals, portfolioValueILS }: GoalsSectionProps) {
         >
           <div className="text-5xl mb-3">🎯</div>
           <h3 className="text-white font-bold text-lg mb-2">אין מטרות עדיין</h3>
-          <p className="text-purple-300/70 mb-4 text-sm">הוסף מטרה ראשונה ותתחיל לחסוך!</p>
-          <Button
-            onClick={() => setShowAdd(true)}
-            className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl"
-          >
-            <Plus className="w-4 h-4 ms-2" />
-            הוסף מטרה ראשונה
-          </Button>
+          <p className="text-purple-300/70 mb-4 text-sm">
+            {isParentMode ? 'הוסף מטרה ראשונה ותתחיל לחסוך!' : 'בקש מההורה להוסיף מטרה!'}
+          </p>
+          {isParentMode && (
+            <Button
+              onClick={() => setShowAdd(true)}
+              className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl"
+            >
+              <Plus className="w-4 h-4 ms-2" />
+              הוסף מטרה ראשונה
+            </Button>
+          )}
         </motion.div>
       ) : (
         <div className="space-y-4">
@@ -135,14 +143,16 @@ export function GoalsSection({ goals, portfolioValueILS }: GoalsSectionProps) {
                     </div>
                   </div>
 
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleDelete(goal.id)}
-                    className="p-2 bg-red-500/20 hover:bg-red-500 rounded-lg text-red-400 hover:text-white transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </motion.button>
+                  {isParentMode && (
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => handleDelete(goal.id)}
+                      className="p-2 bg-red-500/20 hover:bg-red-500 rounded-lg text-red-400 hover:text-white transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </motion.button>
+                  )}
                 </div>
 
                 {/* Progress bar */}
@@ -178,7 +188,7 @@ export function GoalsSection({ goals, portfolioValueILS }: GoalsSectionProps) {
         </div>
       )}
 
-      <AddGoalDialog open={showAdd} onClose={() => setShowAdd(false)} />
+      <AddGoalDialog open={showAdd} onClose={() => setShowAdd(false)} childId={childId} />
     </motion.div>
   )
 }

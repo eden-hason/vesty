@@ -25,6 +25,26 @@ export interface InvestmentGoal {
   updated_at: string
 }
 
+export interface Profile {
+  id: string
+  role: 'parent' | 'child'
+  parent_id: string | null
+  display_name: string | null
+  avatar_url: string | null
+  created_at: string
+}
+
+export interface Invitation {
+  id: string
+  parent_id: string
+  child_name: string
+  child_email: string
+  token: string
+  status: 'pending' | 'accepted' | 'expired'
+  created_at: string
+  expires_at: string
+}
+
 export interface PortfolioStats {
   totalValueUSD: number
   totalCostUSD: number

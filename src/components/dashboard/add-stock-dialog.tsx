@@ -41,9 +41,10 @@ const defaultDate = () => new Date().toISOString().split('T')[0]
 interface AddStockDialogProps {
   open: boolean
   onClose: () => void
+  childId?: string
 }
 
-export function AddStockDialog({ open, onClose }: AddStockDialogProps) {
+export function AddStockDialog({ open, onClose, childId }: AddStockDialogProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<StockResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -156,6 +157,7 @@ export function AddStockDialog({ open, onClose }: AddStockDialogProps) {
         quantity: parseFloat(quantity),
         date_purchased: date,
         emoji: selected.emoji,
+        childId,
       })
 
       confetti({
