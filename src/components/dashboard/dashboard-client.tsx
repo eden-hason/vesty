@@ -11,8 +11,9 @@ import { ChildrenSelector } from './children-selector'
 import { InviteChildDialog } from './invite-child-dialog'
 import { GoalsSection } from '@/components/goals/goals-section'
 import { LoadingScreen } from '@/components/loading-screen'
+import { PendingInvitations } from './pending-invitations'
 import { LOADING_START_KEY } from '@/app/dashboard/loading'
-import type { Stock, InvestmentGoal, Profile } from '@/lib/types'
+import type { Stock, InvestmentGoal, Profile, Invitation } from '@/lib/types'
 
 const MIN_LOADING_MS = 3000
 
@@ -22,9 +23,10 @@ interface DashboardClientProps {
   profile: Profile
   children: Profile[]
   selectedChildId: string | null
+  pendingInvitations?: Invitation[]
 }
 
-export function DashboardClient({ stocks, goals, profile, children: childProfiles, selectedChildId }: DashboardClientProps) {
+export function DashboardClient({ stocks, goals, profile, children: childProfiles, selectedChildId, pendingInvitations = [] }: DashboardClientProps) {
   const isParentMode = profile.role === 'parent'
   const [ilsRate, setIlsRate] = useState<number | null>(null)
   const [livePrices, setLivePrices] = useState<Record<string, number>>({})
@@ -186,6 +188,9 @@ export function DashboardClient({ stocks, goals, profile, children: childProfile
               />
             </>
           )}
+
+          {/* Pending invitations — always at the bottom for parents */}
+          {isParentMode && <PendingInvitations invitations={pendingInvitations} />}
         </div>
       </div>
 

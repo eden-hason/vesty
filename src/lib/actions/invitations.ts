@@ -74,8 +74,26 @@ export async function getInvitations() {
     .from('invitations')
     .select('*')
     .eq('parent_id', user.id)
+    .eq('status', 'pending')
     .order('created_at', { ascending: false })
 
   if (error) return []
   return data ?? []
+}
+
+export async function revokeInvitation(invitationId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const { error } = await supabase
+    .from('invitations')
+    .delete()
+    .eq('id', invitationId)
+    .eq('parent_id', user.id)
+    .eq('status', 'pending')
+
+  if (error) throw error
+
+  revalidatePath('/dashboard')
 }

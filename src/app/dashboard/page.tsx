@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getStocks } from '@/lib/data/stocks'
 import { getGoals } from '@/lib/data/goals'
 import { getProfile, getChildren } from '@/lib/data/profiles'
+import { getInvitations } from '@/lib/actions/invitations'
 import { DashboardClient } from '@/components/dashboard/dashboard-client'
 
 export default async function DashboardPage({
@@ -31,7 +32,7 @@ export default async function DashboardPage({
   const params = await searchParams
 
   if (profile.role === 'parent') {
-    const children = await getChildren()
+    const [children, pendingInvitations] = await Promise.all([getChildren(), getInvitations()])
     const selectedChildId = params.child ?? children[0]?.id ?? null
     const [stocks, goals] = selectedChildId
       ? await Promise.all([getStocks(selectedChildId), getGoals(selectedChildId)])
@@ -44,6 +45,7 @@ export default async function DashboardPage({
         profile={profile}
         children={children}
         selectedChildId={selectedChildId}
+        pendingInvitations={pendingInvitations}
       />
     )
   }
