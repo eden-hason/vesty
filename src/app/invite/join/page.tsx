@@ -1,10 +1,11 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 
-export default function InviteJoinPage() {
+function InviteJoinContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
 
@@ -59,5 +60,13 @@ export default function InviteJoinPage() {
         </Button>
       </div>
     </main>
+  )
+}
+
+export default function InviteJoinPage() {
+  return (
+    <Suspense>
+      <InviteJoinContent />
+    </Suspense>
   )
 }
