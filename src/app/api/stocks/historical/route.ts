@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { normalizeQuote } from '@/lib/currency'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -31,13 +32,14 @@ export async function GET(request: Request) {
       },
       next: { revalidate: 0 },
     })
-    if (!res.ok) return NextResponse.json({ price: null })
+    if (!res.ok) return NextResponse.json({ price: null, currency: null })
 
     const data = await res.json()
-    const timestamps: number[] = data?.chart?.result?.[0]?.timestamp ?? []
-    const closes: number[] = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? []
+    const result = data?.chart?.result?.[0]
+    const timestamps: number[] = result?.timestamp ?? []
+    const closes: number[] = result?.indicators?.quote?.[0]?.close ?? []
 
-    if (!timestamps.length) return NextResponse.json({ price: null })
+    if (!timestamps.length) return NextResponse.json({ price: null, currency: null })
 
     const targetTime = target.getTime() / 1000
     // Find closest index on or before the target date
@@ -46,9 +48,15 @@ export async function GET(request: Request) {
       if (timestamps[i] <= targetTime) bestIdx = i
     }
 
-    const price = closes[bestIdx] ?? null
-    return NextResponse.json({ price: price != null ? Math.round(price * 100) / 100 : null })
+    // Closes are quoted in the listing's own currency, so it is reported
+    // alongside the price rather than being assumed to be USD.
+    const { price, currency } = normalizeQuote(closes[bestIdx] ?? null, result?.meta?.currency ?? null)
+
+    return NextResponse.json({
+      price: price != null ? Math.round(price * 100) / 100 : null,
+      currency,
+    })
   } catch {
-    return NextResponse.json({ price: null })
+    return NextResponse.json({ price: null, currency: null })
   }
 }

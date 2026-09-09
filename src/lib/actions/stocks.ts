@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Stock } from '@/lib/types'
+import { BASE_CURRENCY, isValidUsdIlsRate } from '@/lib/currency'
 
 async function getAuthedUser() {
   const supabase = await createClient()
@@ -31,15 +32,27 @@ export async function addStock(formData: {
   quantity: number
   date_purchased: string
   emoji?: string
+  currency?: string
   usd_ils_rate?: number
   childId?: string
 }) {
   const { supabase, user } = await getAuthedUser()
-  const { childId, ...stockData } = formData
+  const { childId, currency, usd_ils_rate, ...stockData } = formData
   const targetUserId = await resolveTargetUserId(supabase, user.id, childId)
+
+  // Every downstream calculation multiplies these prices by a USD→ILS rate, so
+  // a listing quoted in anything else would be silently mispriced.
+  const quoteCurrency = (currency ?? BASE_CURRENCY).toUpperCase()
+  if (quoteCurrency !== BASE_CURRENCY) {
+    throw new Error(`Only ${BASE_CURRENCY}-quoted stocks are supported (got ${quoteCurrency})`)
+  }
 
   const { error } = await supabase.from('stocks').insert({
     ...stockData,
+    currency: quoteCurrency,
+    // A rate outside the plausible band is dropped rather than stored: a null
+    // cost basis is recoverable, a wrong one silently distorts every ILS total.
+    usd_ils_rate: isValidUsdIlsRate(usd_ils_rate) ? usd_ils_rate : null,
     user_id: targetUserId,
   })
 

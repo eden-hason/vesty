@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion'
 import { Trash2 } from 'lucide-react'
 import type { Stock } from '@/lib/types'
+import { BASE_CURRENCY, usdToIls } from '@/lib/currency'
 
 const STOCK_EMOJIS: Record<string, string> = {
   AAPL: '🍎', TSLA: '⚡', DIS: '🏰', MSFT: '💻',
@@ -28,7 +29,10 @@ export function StockCard({ stock, index, ilsRate, isParentMode, onDelete }: Sto
   const gain = totalValue - purchaseValue
   const gainPercent = ((currentPrice - stock.purchase_price) / stock.purchase_price) * 100
   const isPositive = gain >= 0
-  const ilsValue = ilsRate ? totalValue * ilsRate : null
+  // Legacy rows predate the currency column; they were all USD in practice.
+  const isBaseCurrency = (stock.currency ?? BASE_CURRENCY) === BASE_CURRENCY
+  // Only USD-quoted holdings may be run through the USD→ILS rate.
+  const ilsValue = isBaseCurrency ? usdToIls(totalValue, ilsRate) : null
 
   return (
     <motion.div
@@ -74,6 +78,11 @@ export function StockCard({ stock, index, ilsRate, isParentMode, onDelete }: Sto
           {ilsValue != null && (
             <div className="text-cyan-300 text-sm">
               ₪{ilsValue.toLocaleString('he-IL', { maximumFractionDigits: 0 })}
+            </div>
+          )}
+          {!isBaseCurrency && (
+            <div className="text-amber-300 text-xs">
+              נסחרת ב-{stock.currency}
             </div>
           )}
         </div>

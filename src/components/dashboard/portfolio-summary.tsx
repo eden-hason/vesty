@@ -3,13 +3,17 @@
 import { motion } from 'framer-motion'
 import { TrendingUp, TrendingDown, Sparkles } from 'lucide-react'
 import type { Stock } from '@/lib/types'
+import { usdToIls } from '@/lib/currency'
+import { formatUSD } from '@/lib/utils'
 
 interface PortfolioSummaryProps {
   stocks: Stock[]
   ilsRate: number | null
+  /** True when the rate is the hardcoded fallback rather than a live quote. */
+  rateIsStale?: boolean
 }
 
-export function PortfolioSummary({ stocks, ilsRate }: PortfolioSummaryProps) {
+export function PortfolioSummary({ stocks, ilsRate, rateIsStale = false }: PortfolioSummaryProps) {
   const totalValueUSD = stocks.reduce((sum, s) => {
     const price = s.current_price ?? s.purchase_price
     return sum + price * s.quantity
@@ -23,7 +27,7 @@ export function PortfolioSummary({ stocks, ilsRate }: PortfolioSummaryProps) {
   const gainPercent = totalCostUSD > 0 ? (gainUSD / totalCostUSD) * 100 : 0
   const isPositive = gainUSD >= 0
 
-  const ilsValue = ilsRate ? totalValueUSD * ilsRate : null
+  const ilsValue = usdToIls(totalValueUSD, ilsRate)
 
   return (
     <motion.div
@@ -72,8 +76,15 @@ export function PortfolioSummary({ stocks, ilsRate }: PortfolioSummaryProps) {
           animate={{ scale: 1 }}
           className="text-cyan-300 text-2xl font-semibold mt-1"
         >
-          ${totalValueUSD.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+          {formatUSD(totalValueUSD)}
         </motion.div>
+
+        {/* A fabricated rate must not read as a real one. */}
+        {ilsValue != null && rateIsStale && (
+          <p className="text-amber-200/80 text-xs mt-1">
+            שער החליפין אינו זמין כעת — הסכום בשקלים הוא הערכה בלבד.
+          </p>
+        )}
 
         <motion.div
           initial={{ opacity: 0 }}
@@ -87,7 +98,7 @@ export function PortfolioSummary({ stocks, ilsRate }: PortfolioSummaryProps) {
         >
           {isPositive ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
           <span className="font-semibold">
-            {isPositive ? '+' : ''}{gainUSD.toFixed(0)}$ רווח כולל
+            {isPositive ? '+' : ''}{formatUSD(gainUSD)} רווח כולל
           </span>
           <span className="text-sm opacity-80">
             ({isPositive ? '+' : ''}{gainPercent.toFixed(1)}%)

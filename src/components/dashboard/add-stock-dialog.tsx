@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { addStock } from '@/lib/actions/stocks'
+import { BASE_CURRENCY, isValidUsdIlsRate } from '@/lib/currency'
 import confetti from 'canvas-confetti'
 
 const QUICK_STOCKS: StockResult[] = [
@@ -33,6 +34,8 @@ interface Recommendation {
 
 interface SelectedStock extends StockResult {
   currentPrice: number | null
+  /** Currency the quote came back in; null until the quote resolves. */
+  currency: string | null
   recommendation: Recommendation | null
 }
 
@@ -53,6 +56,7 @@ export function AddStockDialog({ open, onClose, childId }: AddStockDialogProps) 
   const [quantity, setQuantity] = useState('')
   const [date, setDate] = useState(defaultDate())
   const [fetchingPrice, setFetchingPrice] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -69,6 +73,7 @@ export function AddStockDialog({ open, onClose, childId }: AddStockDialogProps) 
     setQuantity('')
     setDate(defaultDate())
     setShowDropdown(false)
+    setSubmitError(null)
   }
 
   function handleClose() {
@@ -114,6 +119,11 @@ export function AddStockDialog({ open, onClose, childId }: AddStockDialogProps) 
       const res = await fetch(`/api/stocks/historical?ticker=${ticker}&date=${d}`)
       const data = res.ok ? await res.json() : null
       if (data?.price) setPurchasePrice(String(Math.round(data.price * 100) / 100))
+      // The historical endpoint is the authority on the currency for the date
+      // actually being recorded, so let it correct the live quote's answer.
+      if (data?.currency) {
+        setSelected(prev => (prev ? { ...prev, currency: data.currency as string } : prev))
+      }
     } catch {}
     finally { setFetchingPrice(false) }
   }, [])
@@ -122,7 +132,8 @@ export function AddStockDialog({ open, onClose, childId }: AddStockDialogProps) 
     setShowDropdown(false)
     skipSearch.current = true
     setQuery(stock.company_name)
-    setSelected({ ...stock, currentPrice: null, recommendation: null })
+    setSubmitError(null)
+    setSelected({ ...stock, currentPrice: null, currency: null, recommendation: null })
 
     // Fetch current price + recommendation in parallel
     const [quoteRes] = await Promise.all([
@@ -130,13 +141,31 @@ export function AddStockDialog({ open, onClose, childId }: AddStockDialogProps) 
     ])
 
     const price: number | null = quoteRes?.price ?? null
+    const currency: string | null = quoteRes?.currency ?? null
     const rec: Recommendation | null = quoteRes?.recommendation ?? null
 
-    setSelected(prev => prev ? { ...prev, currentPrice: price, recommendation: rec } : prev)
+    setSelected(prev => prev ? { ...prev, currentPrice: price, currency, recommendation: rec } : prev)
     if (price != null) setPurchasePrice(String(Math.round(price * 100) / 100))
 
     // Also fetch historical for selected date
     fetchHistoricalPrice(stock.ticker, date)
+  }
+
+  /**
+   * The USD→ILS rate on the purchase date, so a backdated position gets the
+   * rate that actually applied then rather than today's. Stored with the stock
+   * to give the ILS cost basis a fixed reference point.
+   */
+  async function fetchPurchaseRate(purchaseDate: string): Promise<number | undefined> {
+    try {
+      const res = await fetch(`/api/ai/exchange-rate?date=${encodeURIComponent(purchaseDate)}`)
+      const data = res.ok ? await res.json() : null
+      // A flagged fallback is a placeholder, not a rate worth persisting.
+      if (data?.stale) return undefined
+      return isValidUsdIlsRate(data?.rate) ? data.rate : undefined
+    } catch {
+      return undefined
+    }
   }
 
   function handleDateChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -145,20 +174,33 @@ export function AddStockDialog({ open, onClose, childId }: AddStockDialogProps) 
     if (selected) fetchHistoricalPrice(selected.ticker, d)
   }
 
+  // Null currency means the quote has not resolved yet — not a mismatch.
+  const isUnsupportedCurrency =
+    selected?.currency != null && selected.currency !== BASE_CURRENCY
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!selected || !purchasePrice || !quantity) return
+    if (isUnsupportedCurrency) return
 
+    setSubmitError(null)
     startTransition(async () => {
-      await addStock({
-        ticker: selected.ticker,
-        company_name: selected.company_name,
-        purchase_price: parseFloat(purchasePrice),
-        quantity: parseFloat(quantity),
-        date_purchased: date,
-        emoji: selected.emoji,
-        childId,
-      })
+      try {
+        await addStock({
+          ticker: selected.ticker,
+          company_name: selected.company_name,
+          purchase_price: parseFloat(purchasePrice),
+          quantity: parseFloat(quantity),
+          date_purchased: date,
+          emoji: selected.emoji,
+          currency: selected.currency ?? BASE_CURRENCY,
+          usd_ils_rate: await fetchPurchaseRate(date),
+          childId,
+        })
+      } catch (err) {
+        setSubmitError(err instanceof Error ? err.message : 'הוספת המניה נכשלה')
+        return
+      }
 
       confetti({
         particleCount: 120,
@@ -309,9 +351,15 @@ export function AddStockDialog({ open, onClose, childId }: AddStockDialogProps) 
                   </div>
                 )}
 
-                {selected.currentPrice != null && (
+                {selected.currentPrice != null && !isUnsupportedCurrency && (
                   <p className="text-cyan-300 text-xs">
                     מחיר נוכחי: <span className="font-bold">${selected.currentPrice.toFixed(2)}</span>
+                  </p>
+                )}
+
+                {isUnsupportedCurrency && (
+                  <p className="text-amber-300 text-xs">
+                    מניה זו נסחרת ב-{selected.currency} ולא בדולר, ולכן לא ניתן להוסיף אותה לתיק.
                   </p>
                 )}
               </motion.div>
@@ -370,10 +418,14 @@ export function AddStockDialog({ open, onClose, childId }: AddStockDialogProps) 
             </div>
           )}
 
+          {submitError && (
+            <p className="text-red-300 text-xs text-center">{submitError}</p>
+          )}
+
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
               type="submit"
-              disabled={isPending || !selected || !purchasePrice || !quantity}
+              disabled={isPending || !selected || !purchasePrice || !quantity || isUnsupportedCurrency}
               className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-6 rounded-xl text-lg shadow-lg shadow-purple-500/30 disabled:opacity-50"
             >
               <Plus className="w-5 h-5 ms-2" />

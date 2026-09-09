@@ -8,6 +8,9 @@ export interface Stock {
   quantity: number
   date_purchased: string
   emoji: string | null
+  /** ISO code the price columns are quoted in. Always 'USD' today. */
+  currency: string
+  /** USD→ILS rate captured at purchase time, for an ILS cost basis. */
   usd_ils_rate: number | null
   created_at: string
   updated_at: string
