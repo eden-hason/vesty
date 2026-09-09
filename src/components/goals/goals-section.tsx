@@ -29,7 +29,8 @@ const PROGRESS_COLORS: Record<string, string> = {
 
 interface GoalsSectionProps {
   goals: InvestmentGoal[]
-  portfolioValueILS: number
+  /** Null while the USD→ILS rate is unknown — distinct from a value of zero. */
+  portfolioValueILS: number | null
   isParentMode?: boolean
   childId?: string
 }
@@ -47,8 +48,11 @@ export function GoalsSection({ goals, portfolioValueILS, isParentMode = true, ch
     })
   }
 
-  // Allocate portfolio value sequentially across goals (first goal fills first)
-  let remaining = portfolioValueILS
+  // Allocate portfolio value sequentially across goals (first goal fills first).
+  // Without a rate the shekel value is unknown, and showing 0% would read as
+  // "you have saved nothing" rather than "we cannot tell yet".
+  const valueIsKnown = portfolioValueILS != null
+  let remaining = portfolioValueILS ?? 0
 
   return (
     <motion.div
@@ -93,8 +97,12 @@ export function GoalsSection({ goals, portfolioValueILS, isParentMode = true, ch
           {goals.map((goal, index) => {
             const allocated = Math.min(remaining, goal.target_amount)
             remaining = Math.max(0, remaining - goal.target_amount)
-            const progress = Math.min((allocated / goal.target_amount) * 100, 100)
-            const isComplete = progress >= 100 || goal.completed
+            // Guard the divisor: a zero target would make progress NaN/Infinity.
+            const progress =
+              valueIsKnown && goal.target_amount > 0
+                ? Math.min((allocated / goal.target_amount) * 100, 100)
+                : 0
+            const isComplete = (valueIsKnown && progress >= 100) || goal.completed
             const theme = COLOR_THEMES[goal.color ?? 'purple'] ?? COLOR_THEMES.purple
             const progressColor = PROGRESS_COLORS[goal.color ?? 'purple'] ?? PROGRESS_COLORS.purple
 
@@ -152,7 +160,7 @@ export function GoalsSection({ goals, portfolioValueILS, isParentMode = true, ch
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-purple-300">התקדמות</span>
                     <span className={`font-bold ${isComplete ? 'text-green-400' : 'text-cyan-300'}`}>
-                      {progress.toFixed(0)}%
+                      {valueIsKnown ? `${progress.toFixed(0)}%` : '—'}
                     </span>
                   </div>
                   <div className="relative h-3 bg-white/10 rounded-full overflow-hidden">
@@ -170,8 +178,14 @@ export function GoalsSection({ goals, portfolioValueILS, isParentMode = true, ch
                     </motion.div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-purple-400">
-                    <span>₪{Math.round(allocated).toLocaleString()} נוכחי</span>
-                    <span>נותרו ₪{Math.round(Math.max(0, goal.target_amount - allocated)).toLocaleString()}</span>
+                    {valueIsKnown ? (
+                      <>
+                        <span>₪{Math.round(allocated).toLocaleString()} נוכחי</span>
+                        <span>נותרו ₪{Math.round(Math.max(0, goal.target_amount - allocated)).toLocaleString()}</span>
+                      </>
+                    ) : (
+                      <span>שער החליפין אינו זמין — לא ניתן לחשב התקדמות</span>
+                    )}
                   </div>
                 </div>
               </motion.div>

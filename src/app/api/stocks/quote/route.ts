@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { normalizeQuote } from '@/lib/currency'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -19,14 +20,19 @@ export async function GET(request: Request) {
       },
       next: { revalidate: 0 },
     })
-    if (!res.ok) return NextResponse.json({ price: null, recommendation: null })
+    if (!res.ok) return NextResponse.json({ price: null, currency: null, recommendation: null })
 
     const data = await res.json()
     const meta = data?.chart?.result?.[0]?.meta
-    const price: number | null = meta?.regularMarketPrice ?? meta?.previousClose ?? null
+    // The quote currency travels with the price: the caller has to know a
+    // non-USD listing is not comparable to the rest of the portfolio.
+    const { price, currency } = normalizeQuote(
+      meta?.regularMarketPrice ?? meta?.previousClose ?? null,
+      meta?.currency ?? null
+    )
 
-    return NextResponse.json({ price, recommendation: null })
+    return NextResponse.json({ price, currency, recommendation: null })
   } catch {
-    return NextResponse.json({ price: null, recommendation: null })
+    return NextResponse.json({ price: null, currency: null, recommendation: null })
   }
 }

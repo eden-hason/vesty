@@ -14,6 +14,7 @@ import { LoadingScreen } from '@/components/loading-screen'
 import { PendingInvitations } from './pending-invitations'
 import { LOADING_START_KEY } from '@/app/dashboard/loading'
 import type { Stock, InvestmentGoal, Profile, Invitation } from '@/lib/types'
+import { isValidUsdIlsRate, usdToIls } from '@/lib/currency'
 
 const MIN_LOADING_MS = 3000
 
@@ -29,6 +30,7 @@ interface DashboardClientProps {
 export function DashboardClient({ stocks, goals, profile, children: childProfiles, selectedChildId, pendingInvitations = [] }: DashboardClientProps) {
   const isParentMode = profile.role === 'parent'
   const [ilsRate, setIlsRate] = useState<number | null>(null)
+  const [rateIsStale, setRateIsStale] = useState(false)
   const [livePrices, setLivePrices] = useState<Record<string, number>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
@@ -52,7 +54,13 @@ export function DashboardClient({ stocks, goals, profile, children: childProfile
   useEffect(() => {
     fetch('/api/ai/exchange-rate')
       .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data?.rate) setIlsRate(data.rate) })
+      .then((data) => {
+        // An implausible rate is discarded, leaving the rate unknown, rather
+        // than being used to render a wildly wrong shekel figure.
+        if (!isValidUsdIlsRate(data?.rate)) return
+        setIlsRate(data.rate)
+        setRateIsStale(Boolean(data.stale))
+      })
       .catch(() => {})
       .finally(() => {
         rateLoadedRef.current = true
@@ -93,7 +101,9 @@ export function DashboardClient({ stocks, goals, profile, children: childProfile
   const totalValueUSD = stocksWithLivePrices.reduce(
     (sum, s) => sum + (s.current_price ?? s.purchase_price) * s.quantity, 0
   )
-  const portfolioValueILS = ilsRate ? totalValueUSD * ilsRate : 0
+  // Null while the rate is unknown. Zero would be indistinguishable from an
+  // empty portfolio and would render goal progress as a genuine 0%.
+  const portfolioValueILS = usdToIls(totalValueUSD, ilsRate)
 
   function handleSelectChild(childId: string) {
     router.push(`/dashboard?child=${childId}`)
@@ -176,7 +186,11 @@ export function DashboardClient({ stocks, goals, profile, children: childProfile
           {(selectedChildId || !isParentMode) && (
             <>
               {/* Portfolio summary */}
-              <PortfolioSummary stocks={stocksWithLivePrices} ilsRate={ilsRate} />
+              <PortfolioSummary
+                stocks={stocksWithLivePrices}
+                ilsRate={ilsRate}
+                rateIsStale={rateIsStale}
+              />
 
               {/* Stock list */}
               <StockList
